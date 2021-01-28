@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  proxy:
+    image: traefik:2.3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "80:80"
+      - "8090:8080"
+    command:
+      # Enable Docker in Traefik, so that it reads labels from Docker services
+      - --providers.docker
+      # Add a constraint to only use services with the label for this stack
+      # from the env var STACK_NAME
+      - --providers.docker.constraints=Label(`traefik.constraint-label-stack`, `${STACK_NAME}`)
+      # Do not expose all Docker services, only the ones explicitly exposed
+      - --providers.docker.exposedbydefault=false
+      - --accesslog
+      - --log
+      # Enable the Dashboard and API
+      - --api
+      # Enable the Dashboard and API in insecure mode for local development
+      - --api.insecure=true
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${STACK_NAME}-traefik-public-http.rule=Host(`${DOMAIN}`)
+      - traefik.http.services.${STACK_NAME}-traefik-public.loadbalancer.server.port=80
+
+  frontend:
+    labels:
+      - traefik.enable=true
+      - traefik.constraint-label-stack=${STACK_NAME}
+      - traefik.http.routers.${STACK_NAME}-frontend-http.rule=PathPrefix(`/`)
+      - traefik.http.services.${STACK_NAME}-frontend.loadbalancer.server.port=3000
+
+  backend:
+    labels:
+      - traefik.enable=true
+      - traefik.constraint-label-stack=${STACK_NAME}
+      - traefik.http.routers.${STACK_NAME}-backend-http.rule=PathPrefix(`/api`)
+      - traefik.http.services.${STACK_NAME}-backend.loadbalancer.server.port=8000

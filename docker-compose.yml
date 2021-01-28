@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  backend:
+    image: "${BACKEND_IMAGE}:${TAG-latest}"
+    build:
+      context: ./backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: curl --fail http://localhost:8000/?healthcheck || exit 1
+      interval: 1m
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    image: "${FRONTEND_IMAGE}:${TAG-latest}"
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: $REACT_APP_API_URL
+    healthcheck:
+      test: curl --fail http://localhost:3000/?healthcheck || exit 1
+      interval: 1m
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
